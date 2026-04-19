@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SwiftOrder</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --orange: #FF6432;
+    --orange-dark: #e04e20;
+    --orange-light: #fff3ee;
+    --blue: #3296FF;
+    --blue-dark: #1a7ae8;
+    --cream: #FFF8F2;
+    --text: #1a1208;
+    --muted: #7a6050;
+    --border: rgba(0,0,0,0.1);
+    --card-bg: #ffffff;
+    --shadow: 0 4px 24px rgba(255,100,50,0.10);
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── PAGE SYSTEM ── */
+  .page { display: none; min-height: 100vh; }
+  .page.active { display: flex; flex-direction: column; }
+
+  /* ── LOGIN PAGE ── */
+  #loginPage {
+    background: #1a0e06;
+    position: relative;
+    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #loginPage .poster-bg {
+    position: absolute; inset: 0;
+    background-image: url('poster.png');
+    background-size: cover;
+    background-position: center;
+    opacity: 0.35;
+    z-index: 0;
+  }
+
+  #loginPage .overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to bottom, rgba(26,14,6,0.4) 0%, rgba(26,14,6,0.75) 100%);
+    z-index: 1;
+  }
+
+  #loginPage .content {
+    position: relative; z-index: 2;
+    display: flex; flex-direction: column; align-items: center; gap: 2.5rem;
+    width: 100%; max-width: 460px; padding: 2rem;
+  }
+
+  .brand-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.5rem, 8vw, 4rem);
+    font-weight: 900;
+    color: var(--orange);
+    text-align: center;
+    letter-spacing: -1px;
+    text-shadow: 0 2px 20px rgba(255,100,50,0.4);
+    line-height: 1;
+  }
+
+  .brand-subtitle {
+    font-size: 0.95rem;
+    color: rgba(255,255,255,0.6);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 0.4rem;
+    text-align: center;
+  }
+
+  .login-card {
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 2.5rem;
+    width: 100%;
+  }
+
+  .login-card h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    color: #fff;
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+
+  .field { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+
+  .field label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.7);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .field input {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    font-family: 'DM Sans', sans-serif;
+    color: #fff;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .field input::placeholder { color: rgba(255,255,255,0.35); }
+  .field input:focus { border-color: var(--orange); background: rgba(255,255,255,0.15); }
+
+  .btn-row { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+
+  .btn {
+    flex: 1; padding: 0.85rem;
+    border: none; border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem; font-weight: 600;
+    cursor: pointer; transition: transform 0.15s, opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn-primary { background: var(--orange); color: #fff; }
+  .btn-secondary { background: var(--blue); color: #fff; }
+
+  .login-error {
+    margin-top: 1rem; padding: 0.6rem 1rem;
+    background: rgba(226,75,74,0.2); border: 1px solid rgba(226,75,74,0.4);
+    border-radius: 8px; color: #f09595;
+    font-size: 0.875rem; text-align: center;
+    display: none;
+  }
+
+  /* ── DASHBOARD ── */
+  #dashPage {
+    background: var(--cream);
+  }
+
+  .topbar {
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .topbar .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem; font-weight: 900;
+    color: var(--orange);
+  }
+
+  .topbar-actions { display: flex; gap: 0.75rem; }
+  .topbar-actions button {
+    padding: 0.5rem 1.1rem;
+    border-radius: 8px; border: 1.5px solid var(--border);
+    background: transparent; font-family: 'DM Sans', sans-serif;
+    font-size: 0.875rem; font-weight: 600; cursor: pointer;
+    transition: all 0.2s; color: var(--text);
+  }
+  .topbar-actions button:hover { border-color: var(--orange); color: var(--orange); }
+  .topbar-actions .btn-order {
+    background: var(--orange); color: #fff; border-color: var(--orange);
+  }
+  .topbar-actions .btn-order:hover { background: var(--orange-dark); border-color: var(--orange-dark); color: #fff; }
+
+  .hero {
+    position: relative; overflow: hidden;
+    background: #1a0e06;
+    padding: 4rem 2rem 3rem;
+    text-align: center;
+  }
+
+  .hero-bg {
+    position: absolute; inset: 0;
+    background-image: url('poster.png');
+    background-size: cover; background-position: center;
+    opacity: 0.2;
+  }
+
+  .hero-content { position: relative; z-index: 1; }
+
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    color: #fff; margin-bottom: 0.5rem;
+  }
+
+  .hero h1 span { color: var(--orange); }
+
+  .hero p {
+    color: rgba(255,255,255,0.65);
+    font-size: 1.05rem; margin-bottom: 2rem;
+  }
+
+  .hero .cta-btn {
+    display: inline-block;
+    background: var(--orange); color: #fff;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem; font-weight: 700;
+    padding: 0.9rem 2.5rem;
+    border-radius: 50px; border: none; cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+    letter-spacing: 0.02em;
+  }
+  .hero .cta-btn:hover { background: var(--orange-dark); transform: scale(1.04); }
+
+  /* sliding showcase */
+  .showcase {
+    display: flex; gap: 1.5rem;
+    justify-content: center; margin-top: 2.5rem;
+    position: relative; z-index: 1;
+  }
+
+  .showcase-card {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.18);
+    backdrop-filter: blur(10px);
+    border-radius: 16px; padding: 1.2rem 1.5rem;
+    display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+    min-width: 130px;
+    opacity: 0; transform: translateY(20px);
+    animation: fadeUp 0.5s ease forwards;
+  }
+  .showcase-card:nth-child(1) { animation-delay: 0.1s; }
+  .showcase-card:nth-child(2) { animation-delay: 0.2s; }
+  .showcase-card:nth-child(3) { animation-delay: 0.3s; }
+
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .showcase-card img { width: 80px; height: 80px; object-fit: contain; }
+  .showcase-card span { color: #fff; font-weight: 600; font-size: 0.95rem; }
+  .showcase-card .price { color: var(--orange); font-size: 0.875rem; }
+
+  .menu-section {
+    padding: 3rem 2rem;
+    max-width: 1100px; margin: 0 auto;
+  }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem; font-weight: 700;
+    margin-bottom: 1.5rem; color: var(--text);
+  }
+
+  .menu-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .menu-card {
+    background: var(--card-bg);
+    border-radius: 16px; border: 1px solid var(--border);
+    padding: 1.25rem;
+    display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+  .menu-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+  .menu-card img { width: 100px; height: 100px; object-fit: contain; }
+  .menu-card .item-name { font-weight: 600; font-size: 1rem; }
+  .menu-card .item-price { color: var(--orange); font-weight: 700; font-size: 1.1rem; }
+
+  /* ── CART PAGE ── */
+  #cartPage {
+    background: var(--cream);
+  }
+
+  .cart-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 1.5rem;
+    max-width: 1100px;
+    margin: 0 auto; padding: 2rem;
+    flex: 1;
+  }
+
+  @media (max-width: 700px) {
+    .cart-layout { grid-template-columns: 1fr; }
+  }
+
+  .cart-items-panel {
+    background: var(--card-bg);
+    border-radius: 16px; border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .cart-items-panel .panel-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem; font-weight: 700;
+  }
+
+  .cart-item-row {
+    display: grid;
+    grid-template-columns: 70px 1fr auto auto auto;
+    align-items: center; gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .cart-item-row:last-child { border-bottom: none; }
+  .cart-item-row:hover { background: var(--orange-light); }
+
+  .cart-item-row img { width: 64px; height: 64px; object-fit: contain; }
+  .cart-item-name { font-weight: 600; font-size: 1rem; }
+  .cart-item-price { color: var(--muted); font-size: 0.875rem; margin-top: 2px; }
+
+  .qty-control {
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+
+  .qty-btn {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1.5px solid var(--border);
+    background: transparent; font-size: 1rem;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+  }
+  .qty-btn:hover { border-color: var(--orange); color: var(--orange); background: var(--orange-light); }
+
+  .qty-val { min-width: 24px; text-align: center; font-weight: 600; }
+
+  .add-cart-btn {
+    padding: 0.45rem 0.9rem;
+    background: var(--orange); color: #fff;
+    border: none; border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 0.875rem; font-weight: 600;
+    cursor: pointer; transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .add-cart-btn:hover { background: var(--orange-dark); }
+
+  .subtotal-label { font-weight: 600; min-width: 56px; text-align: right; }
+
+  /* Summary panel */
+  .summary-panel {
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+
+  .summary-card {
+    background: var(--card-bg);
+    border-radius: 16px; border: 1px solid var(--border);
+    padding: 1.25rem 1.5rem;
+  }
+
+  .summary-card h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem; margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .summary-lines { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .summary-line {
+    display: flex; justify-content: space-between;
+    font-size: 0.925rem;
+  }
+  .summary-line.item-line .line-name { color: var(--text); }
+  .summary-line.item-line .line-val { font-weight: 500; }
+  .summary-line.empty-msg {
+    color: var(--muted); font-style: italic; justify-content: center;
+    font-size: 0.875rem; padding: 0.5rem 0;
+  }
+
+  .summary-total {
+    display: flex; justify-content: space-between;
+    font-size: 1.1rem; font-weight: 700;
+    margin-top: 1rem; padding-top: 0.75rem;
+    border-top: 2px solid var(--orange);
+    color: var(--orange);
+  }
+
+  .checkout-btn {
+    width: 100%; padding: 1rem;
+    background: var(--orange); color: #fff;
+    border: none; border-radius: 12px;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem; font-weight: 700;
+    cursor: pointer; transition: background 0.15s, transform 0.15s;
+  }
+  .checkout-btn:hover { background: var(--orange-dark); transform: scale(1.02); }
+
+  /* ── MODAL ── */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 100;
+    display: none; align-items: center; justify-content: center;
+    padding: 1rem;
+  }
+  .modal-backdrop.open { display: flex; }
+
+  .modal {
+    background: #fff; border-radius: 20px;
+    padding: 2.5rem; max-width: 440px; width: 100%;
+    text-align: center;
+    animation: popIn 0.25s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  }
+  @keyframes popIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  .modal-icon { font-size: 3rem; margin-bottom: 1rem; }
+
+  .modal h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem; margin-bottom: 0.5rem; color: var(--text);
+  }
+  .modal p { color: var(--muted); line-height: 1.6; margin-bottom: 1rem; }
+  .modal .order-num { font-size: 2rem; font-weight: 700; color: var(--orange); margin: 0.5rem 0; }
+
+  .payment-select {
+    display: flex; gap: 0.75rem; justify-content: center; margin: 1rem 0 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .pay-opt {
+    padding: 0.6rem 1.2rem;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    background: transparent; font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem; font-weight: 600; cursor: pointer;
+    color: var(--text); transition: all 0.15s;
+  }
+  .pay-opt.selected { border-color: var(--orange); color: var(--orange); background: var(--orange-light); }
+
+  .modal .confirm-btn {
+    width: 100%; padding: 0.9rem;
+    background: var(--orange); color: #fff;
+    border: none; border-radius: 10px;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem; font-weight: 700; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .modal .confirm-btn:hover { background: var(--orange-dark); }
+
+  /* ── ORDER PLACED PAGE ── */
+  #orderPage {
+    background: var(--cream);
+    align-items: center; justify-content: center;
+    padding: 2rem;
+  }
+
+  .order-receipt {
+    background: #fff; border-radius: 20px;
+    border: 1px solid var(--border);
+    max-width: 480px; width: 100%;
+    overflow: hidden;
+  }
+
+  .receipt-header {
+    background: var(--orange);
+    padding: 2rem; text-align: center; color: #fff;
+  }
+  .receipt-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem; margin-bottom: 0.25rem;
+  }
+  .receipt-header .order-num-lg {
+    font-size: 2.5rem; font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+
+  .receipt-body { padding: 1.5rem; }
+
+  .receipt-meta {
+    display: flex; justify-content: space-between;
+    font-size: 0.875rem; color: var(--muted);
+    margin-bottom: 1.25rem;
+  }
+  .receipt-meta span:last-child { font-weight: 600; color: var(--text); }
+
+  .receipt-lines { margin-bottom: 1.25rem; }
+
+  .receipt-line {
+    display: flex; justify-content: space-between;
+    font-size: 0.95rem; padding: 0.4rem 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .receipt-line:last-child { border-bottom: none; }
+
+  .receipt-total {
+    display: flex; justify-content: space-between;
+    font-size: 1.25rem; font-weight: 700;
+    color: var(--orange);
+    padding-top: 0.75rem;
+    border-top: 2px solid var(--orange);
+  }
+
+  .receipt-footer { padding: 1.25rem 1.5rem; border-top: 1px solid var(--border); }
+  .receipt-footer p {
+    text-align: center; color: var(--muted);
+    font-size: 0.875rem; margin-bottom: 1rem;
+  }
+  .back-home-btn {
+    width: 100%; padding: 0.9rem;
+    background: var(--orange); color: #fff;
+    border: none; border-radius: 10px;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem; font-weight: 700; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .back-home-btn:hover { background: var(--orange-dark); }
+
+  /* toast */
+  .toast {
+    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: #1a1208; color: #fff;
+    padding: 0.7rem 1.4rem; border-radius: 100px;
+    font-size: 0.9rem; font-weight: 500;
+    transition: transform 0.3s ease;
+    z-index: 200; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ LOGIN PAGE ═══════════════ -->
+<div class="page active" id="loginPage">
+  <div class="poster-bg"></div>
+  <div class="overlay"></div>
+  <div class="content">
+    <div>
+      <div class="brand-title">SwiftOrder</div>
+      <div class="brand-subtitle">Order Fast. Eat Well.</div>
+    </div>
+    <div class="login-card">
+      <h2 id="formTitle">Welcome back</h2>
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="loginUser" placeholder="Enter your username">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="loginPass" placeholder="Enter your password">
+      </div>
+      <div class="login-error" id="loginError"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="doLogin()">Login</button>
+        <button class="btn btn-secondary" onclick="doSignup()">Sign Up</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ DASHBOARD ═══════════════ -->
+<div class="page" id="dashPage">
+  <div class="topbar">
+    <div class="logo">SwiftOrder</div>
+    <div class="topbar-actions">
+      <span id="welcomeUser" style="font-weight:600;align-self:center;"></span>
+      <button onclick="goToCart()">🛒 Order Now</button>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-content">
+      <h1>Welcome to <span>SwiftOrder!</span></h1>
+      <p>Fresh food, delivered fast. Pick your favorites below.</p>
+      <button class="cta-btn" onclick="goToCart()">Order Now</button>
+      <div class="showcase">
+        <div class="showcase-card">
+          <img src="burger.png" alt="Burger">
+          <span>Burger</span>
+          <span class="price">₱120</span>
+        </div>
+        <div class="showcase-card">
+          <img src="pizza.png" alt="Pizza">
+          <span>Pizza</span>
+          <span class="price">₱200</span>
+        </div>
+        <div class="showcase-card">
+          <img src="fries.png" alt="Fries">
+          <span>Fries</span>
+          <span class="price">₱70</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="menu-section">
+    <div class="section-title">Our Menu</div>
+    <div class="menu-grid">
+      <div class="menu-card" onclick="goToCart()">
+        <img src="burger.png" alt="Burger">
+        <div class="item-name">Burger</div>
+        <div class="item-price">₱120</div>
+      </div>
+      <div class="menu-card" onclick="goToCart()">
+        <img src="pizza.png" alt="Pizza">
+        <div class="item-name">Pizza</div>
+        <div class="item-price">₱200</div>
+      </div>
+      <div class="menu-card" onclick="goToCart()">
+        <img src="fries.png" alt="Fries">
+        <div class="item-name">Fries</div>
+        <div class="item-price">₱70</div>
+      </div>
+      <div class="menu-card" onclick="goToCart()">
+        <img src="ice_cream.png" alt="Ice Cream">
+        <div class="item-name">Ice Cream</div>
+        <div class="item-price">₱50</div>
+      </div>
+      <div class="menu-card" onclick="goToCart()">
+        <img src="drink.png" alt="Drinks">
+        <div class="item-name">Drinks</div>
+        <div class="item-price">₱40</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ CART PAGE ═══════════════ -->
+<div class="page" id="cartPage">
+  <div class="topbar">
+    <div class="logo">SwiftOrder</div>
+    <div class="topbar-actions">
+      <button onclick="showPage('dashPage')">← Back</button>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="cart-layout">
+    <!-- Items panel -->
+    <div class="cart-items-panel">
+      <div class="panel-header">Choose Your Order</div>
+      <div id="cartRows"></div>
+    </div>
+
+    <!-- Summary panel -->
+    <div class="summary-panel">
+      <div class="summary-card">
+        <h3>Order Summary</h3>
+        <div class="summary-lines" id="summaryLines">
+          <div class="summary-line empty-msg">Your cart is empty</div>
+        </div>
+        <div class="summary-total">
+          <span>Total</span>
+          <span id="totalDisplay">₱0</span>
+        </div>
+      </div>
+      <button class="checkout-btn" onclick="openCheckout()">Checkout</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ ORDER PLACED PAGE ═══════════════ -->
+<div class="page" id="orderPage">
+  <div class="order-receipt">
+    <div class="receipt-header">
+      <div style="font-size:2.5rem;margin-bottom:0.5rem;">🎉</div>
+      <h2>Order Placed!</h2>
+      <div style="font-size:0.9rem;opacity:0.8;margin-bottom:0.25rem;">Order Number</div>
+      <div class="order-num-lg" id="receiptOrderNum">#000000</div>
+    </div>
+    <div class="receipt-body">
+      <div class="receipt-meta">
+        <span>Payment</span>
+        <span id="receiptPayment">—</span>
+      </div>
+      <div class="receipt-lines" id="receiptLines"></div>
+      <div class="receipt-total">
+        <span>Total</span>
+        <span id="receiptTotal">₱0</span>
+      </div>
+    </div>
+    <div class="receipt-footer">
+      <p>Thank you for ordering with SwiftOrder! Your food is being prepared. 🍔</p>
+      <button class="back-home-btn" onclick="backToHome()">Back to Menu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ CHECKOUT MODAL ═══════════════ -->
+<div class="modal-backdrop" id="checkoutModal">
+  <div class="modal">
+    <div class="modal-icon">💳</div>
+    <h2>Choose Payment</h2>
+    <p>How would you like to pay for your order?</p>
+    <div class="payment-select">
+      <button class="pay-opt selected" onclick="selectPay(this,'Cash')">Cash</button>
+      <button class="pay-opt" onclick="selectPay(this,'GCash')">GCash</button>
+      <button class="pay-opt" onclick="selectPay(this,'Card')">Card</button>
+    </div>
+    <button class="confirm-btn" onclick="confirmCheckout()">Confirm Order</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── DATA ──
+  const MENU = [
+    { name: 'Burger',    price: 120, img: 'burger.png'    },
+    { name: 'Pizza',     price: 200, img: 'pizza.png'     },
+    { name: 'Fries',     price: 70,  img: 'fries.png'     },
+    { name: 'Ice Cream', price: 50,  img: 'ice_cream.png' },
+    { name: 'Drinks',    price: 40,  img: 'drink.png'     },
+  ];
+
+  let accounts = { darren:'darren', Arwind:'Gila', Ramil:'Ramil', Hello:'Hello' };
+  let currentUser = '';
+  let cart = {};     // name -> qty
+  let quantities = {}; // live qty controls (before Add to Cart)
+  let selectedPayment = 'Cash';
+
+  // ── ACCOUNTS ──
+  function doLogin() {
+    const u = document.getElementById('loginUser').value.trim();
+    const p = document.getElementById('loginPass').value;
+    if (accounts[u] && accounts[u] === p) {
+      currentUser = u;
+      document.getElementById('welcomeUser').textContent = 'Hi, ' + u + '!';
+      showPage('dashPage');
+      showToast('Welcome back, ' + u + '!');
+    } else {
+      showError('Invalid username or password.');
+    }
+  }
+
+  function doSignup() {
+    const u = document.getElementById('loginUser').value.trim();
+    const p = document.getElementById('loginPass').value;
+    if (!u || !p) { showError('Please fill in both fields.'); return; }
+    if (accounts[u]) { showError('Username already exists.'); return; }
+    accounts[u] = p;
+    showError('');
+    showToast('Account created! You can now log in.');
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('loginError');
+    el.textContent = msg;
+    el.style.display = msg ? 'block' : 'none';
+  }
+
+  function logout() {
+    currentUser = '';
+    cart = {};
+    showPage('loginPage');
+    document.getElementById('loginUser').value = '';
+    document.getElementById('loginPass').value = '';
+    showError('');
+  }
+
+  // ── PAGES ──
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function goToCart() {
+    buildCartRows();
+    showPage('cartPage');
+  }
+
+  function backToHome() {
+    cart = {};
+    quantities = {};
+    buildCartRows();
+    showPage('dashPage');
+  }
+
+  // ── CART ROWS ──
+  function buildCartRows() {
+    const container = document.getElementById('cartRows');
+    container.innerHTML = '';
+    quantities = {};
+
+    MENU.forEach(item => {
+      const qty = quantities[item.name] = { val: 0 };
+
+      const row = document.createElement('div');
+      row.className = 'cart-item-row';
+      row.innerHTML = `
+        <img src="${item.img}" alt="${item.name}">
+        <div>
+          <div class="cart-item-name">${item.name}</div>
+          <div class="cart-item-price">₱${item.price} each</div>
+        </div>
+        <div class="qty-control">
+          <button class="qty-btn" onclick="changeQty('${item.name}',-1,this)">−</button>
+          <span class="qty-val" id="qty_${item.name}">0</span>
+          <button class="qty-btn" onclick="changeQty('${item.name}',1,this)">+</button>
+        </div>
+        <span class="subtotal-label" id="sub_${item.name}">₱0</span>
+        <button class="add-cart-btn" onclick="addToCart('${item.name}',${item.price})">Add to Cart</button>
+      `;
+      container.appendChild(row);
+    });
+
+    refreshSummary();
+  }
+
+  function changeQty(name, delta, btn) {
+    if (!quantities[name]) quantities[name] = { val: 0 };
+    let v = quantities[name].val + delta;
+    if (v < 0) v = 0;
+    quantities[name].val = v;
+    document.getElementById('qty_' + name).textContent = v;
+    const price = MENU.find(m => m.name === name).price;
+    document.getElementById('sub_' + name).textContent = '₱' + (v * price);
+  }
+
+  function addToCart(name, price) {
+    const qty = quantities[name] ? quantities[name].val : 0;
+    if (qty <= 0) { showToast('Set a quantity first!'); return; }
+    cart[name] = (cart[name] || 0) + qty;
+    quantities[name].val = 0;
+    document.getElementById('qty_' + name).textContent = '0';
+    document.getElementById('sub_' + name).textContent = '₱0';
+    refreshSummary();
+    showToast(name + ' added to cart!');
+  }
+
+  function refreshSummary() {
+    const lines = document.getElementById('summaryLines');
+    lines.innerHTML = '';
+    let total = 0;
+
+    const keys = Object.keys(cart).filter(k => cart[k] > 0);
+    if (keys.length === 0) {
+      lines.innerHTML = '<div class="summary-line empty-msg">Your cart is empty</div>';
+    } else {
+      keys.forEach(name => {
+        const price = MENU.find(m => m.name === name).price;
+        const subtotal = cart[name] * price;
+        total += subtotal;
+        const div = document.createElement('div');
+        div.className = 'summary-line item-line';
+        div.innerHTML = `<span class="line-name">${name} x${cart[name]}</span><span class="line-val">₱${subtotal}</span>`;
+        lines.appendChild(div);
+      });
+    }
+
+    document.getElementById('totalDisplay').textContent = '₱' + total;
+  }
+
+  // ── CHECKOUT ──
+  function openCheckout() {
+    if (Object.keys(cart).filter(k => cart[k] > 0).length === 0) {
+      showToast('Your cart is empty!');
+      return;
+    }
+    document.getElementById('checkoutModal').classList.add('open');
+  }
+
+  function selectPay(btn, method) {
+    document.querySelectorAll('.pay-opt').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedPayment = method;
+  }
+
+  function confirmCheckout() {
+    document.getElementById('checkoutModal').classList.remove('open');
+
+    const orderNum = '#' + (Math.floor(Math.random() * 900000) + 100000);
+    let total = 0;
+    const linesEl = document.getElementById('receiptLines');
+    linesEl.innerHTML = '';
+
+    Object.keys(cart).filter(k => cart[k] > 0).forEach(name => {
+      const price = MENU.find(m => m.name === name).price;
+      const sub = cart[name] * price;
+      total += sub;
+      const div = document.createElement('div');
+      div.className = 'receipt-line';
+      div.innerHTML = `<span>${name} x${cart[name]}</span><span>₱${sub}</span>`;
+      linesEl.appendChild(div);
+    });
+
+    document.getElementById('receiptOrderNum').textContent = orderNum;
+    document.getElementById('receiptPayment').textContent = selectedPayment;
+    document.getElementById('receiptTotal').textContent = '₱' + total;
+
+    showPage('orderPage');
+  }
+
+  // ── UTILS ──
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // Enter key on login
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('loginPage').classList.contains('active')) doLogin();
+  });
+</script>
+</body>
+</html>

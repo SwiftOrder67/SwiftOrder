@@ -453,6 +453,94 @@
   }
   .modal .confirm-btn:hover { background: var(--orange-dark); }
 
+  /* ── DELIVERY PAGE ── */
+  #deliveryPage {
+    background: var(--cream);
+  }
+
+  .delivery-layout {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 2rem;
+    flex: 1;
+  }
+
+  .delivery-card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .delivery-card .card-header {
+    background: var(--orange);
+    padding: 1.5rem 2rem;
+    color: #fff;
+  }
+
+  .delivery-card .card-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .delivery-card .card-header p {
+    opacity: 0.85; font-size: 0.9rem;
+  }
+
+  .delivery-form {
+    padding: 1.75rem 2rem;
+    display: flex; flex-direction: column; gap: 1.1rem;
+  }
+
+  .dfield { display: flex; flex-direction: column; gap: 0.4rem; }
+
+  .dfield label {
+    font-size: 0.8rem; font-weight: 600;
+    color: var(--muted); letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .dfield input, .dfield textarea {
+    background: var(--cream);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+    resize: none;
+  }
+
+  .dfield input:focus, .dfield textarea:focus {
+    border-color: var(--orange);
+    background: #fff;
+  }
+
+  .dfield input::placeholder, .dfield textarea::placeholder {
+    color: #bbb;
+  }
+
+  .delivery-error {
+    padding: 0.6rem 1rem;
+    background: #fff0f0; border: 1px solid #f5c0c0;
+    border-radius: 8px; color: #c0392b;
+    font-size: 0.875rem; display: none;
+  }
+
+  .proceed-btn {
+    width: 100%; padding: 1rem;
+    background: var(--orange); color: #fff;
+    border: none; border-radius: 12px;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem; font-weight: 700;
+    cursor: pointer; transition: background 0.15s, transform 0.15s;
+    margin-top: 0.5rem;
+  }
+  .proceed-btn:hover { background: var(--orange-dark); transform: scale(1.02); }
+
   /* ── ORDER PLACED PAGE ── */
   #orderPage {
     background: var(--cream);
@@ -661,7 +749,46 @@
           <span id="totalDisplay">₱0</span>
         </div>
       </div>
-      <button class="checkout-btn" onclick="openCheckout()">Checkout</button>
+      <button class="checkout-btn" onclick="goToDelivery()">Checkout</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ DELIVERY INFO PAGE ═══════════════ -->
+<div class="page" id="deliveryPage">
+  <div class="topbar">
+    <div class="logo">SwiftOrder</div>
+    <div class="topbar-actions">
+      <button onclick="showPage('cartPage')">← Back</button>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+  <div class="delivery-layout">
+    <div class="delivery-card">
+      <div class="card-header">
+        <h2>🛵 Delivery Details</h2>
+        <p>Tell us where to deliver your order!</p>
+      </div>
+      <div class="delivery-form">
+        <div class="dfield">
+          <label>Full Name</label>
+          <input type="text" id="deliveryName" placeholder="e.g. Juan Dela Cruz">
+        </div>
+        <div class="dfield">
+          <label>Phone Number</label>
+          <input type="tel" id="deliveryPhone" placeholder="e.g. 09123456789">
+        </div>
+        <div class="dfield">
+          <label>Delivery Address</label>
+          <textarea id="deliveryAddress" rows="3" placeholder="House no., Street, Barangay, City"></textarea>
+        </div>
+        <div class="dfield">
+          <label>Order Notes (Optional)</label>
+          <textarea id="deliveryNotes" rows="2" placeholder="e.g. Extra rice, no onions, ring doorbell..."></textarea>
+        </div>
+        <div class="delivery-error" id="deliveryError"></div>
+        <button class="proceed-btn" onclick="proceedToPayment()">Proceed to Payment →</button>
+      </div>
     </div>
   </div>
 </div>
@@ -680,7 +807,15 @@
         <span>Payment</span>
         <span id="receiptPayment">—</span>
       </div>
-      <div class="receipt-lines" id="receiptLines"></div>
+      <div class="receipt-meta" style="margin-top:0.25rem;">
+        <span>Deliver to</span>
+        <span id="receiptName" style="font-weight:600;color:var(--text);text-align:right;max-width:60%;">—</span>
+      </div>
+      <div class="receipt-meta" style="margin-top:0.25rem;">
+        <span>Address</span>
+        <span id="receiptAddress" style="font-weight:600;color:var(--text);text-align:right;max-width:60%;">—</span>
+      </div>
+      <div class="receipt-lines" id="receiptLines" style="margin-top:1rem;"></div>
       <div class="receipt-total">
         <span>Total</span>
         <span id="receiptTotal">₱0</span>
@@ -721,11 +856,44 @@
     { name: 'Drinks',    price: 40,  img: 'drink.png'     },
   ];
 
-  let accounts = { darren:'darren', Arwind:'Gila', Ramil:'Ramil', Hello:'Hello' };
+  let accounts = JSON.parse(localStorage.getItem('so_accounts') || 'null') || { darren:'darren', Arwind:'Gila', Ramil:'Ramil', Hello:'Hello' };
   let currentUser = '';
-  let cart = {};     // name -> qty
-  let quantities = {}; // live qty controls (before Add to Cart)
+  let cart = {};
+  let quantities = {};
   let selectedPayment = 'Cash';
+  let deliveryInfo = {};
+
+  function saveAccounts() {
+    localStorage.setItem('so_accounts', JSON.stringify(accounts));
+  }
+
+  // ── DELIVERY ──
+  function goToDelivery() {
+    if (Object.keys(cart).filter(k => cart[k] > 0).length === 0) {
+      showToast('Your cart is empty!'); return;
+    }
+    showPage('deliveryPage');
+  }
+
+  function proceedToPayment() {
+    const name    = document.getElementById('deliveryName').value.trim();
+    const phone   = document.getElementById('deliveryPhone').value.trim();
+    const address = document.getElementById('deliveryAddress').value.trim();
+    const notes   = document.getElementById('deliveryNotes').value.trim();
+    const errEl   = document.getElementById('deliveryError');
+
+    if (!name || !phone || !address) {
+      errEl.textContent = 'Please fill in your name, phone, and address.';
+      errEl.style.display = 'block'; return;
+    }
+    if (!/^[0-9+\s\-]{7,15}$/.test(phone)) {
+      errEl.textContent = 'Please enter a valid phone number.';
+      errEl.style.display = 'block'; return;
+    }
+    errEl.style.display = 'none';
+    deliveryInfo = { name, phone, address, notes };
+    openCheckout();
+  }
 
   // ── ACCOUNTS ──
   function doLogin() {
@@ -733,6 +901,7 @@
     const p = document.getElementById('loginPass').value;
     if (accounts[u] && accounts[u] === p) {
       currentUser = u;
+      localStorage.setItem('so_session', u);
       document.getElementById('welcomeUser').textContent = 'Hi, ' + u + '!';
       showPage('dashPage');
       showToast('Welcome back, ' + u + '!');
@@ -747,6 +916,7 @@
     if (!u || !p) { showError('Please fill in both fields.'); return; }
     if (accounts[u]) { showError('Username already exists.'); return; }
     accounts[u] = p;
+    saveAccounts();
     showError('');
     showToast('Account created! You can now log in.');
   }
@@ -760,6 +930,7 @@
   function logout() {
     currentUser = '';
     cart = {};
+    localStorage.removeItem('so_session');
     showPage('loginPage');
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPass').value = '';
@@ -780,6 +951,11 @@
   function backToHome() {
     cart = {};
     quantities = {};
+    deliveryInfo = {};
+    document.getElementById('deliveryName').value = '';
+    document.getElementById('deliveryPhone').value = '';
+    document.getElementById('deliveryAddress').value = '';
+    document.getElementById('deliveryNotes').value = '';
     buildCartRows();
     showPage('dashPage');
   }
@@ -899,6 +1075,8 @@
     document.getElementById('receiptOrderNum').textContent = orderNum;
     document.getElementById('receiptPayment').textContent = selectedPayment;
     document.getElementById('receiptTotal').textContent = '₱' + total;
+    document.getElementById('receiptName').textContent = deliveryInfo.name + ' · ' + deliveryInfo.phone;
+    document.getElementById('receiptAddress').textContent = deliveryInfo.address;
 
     const now = new Date();
     const datetime = now.toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' })
@@ -913,7 +1091,11 @@
         datetime: datetime,
         items: itemSummary.join(', '),
         payment: selectedPayment,
-        total: '₱' + total
+        total: '₱' + total,
+        customerName: deliveryInfo.name,
+        phone: deliveryInfo.phone,
+        address: deliveryInfo.address,
+        notes: deliveryInfo.notes || '—'
       })
     }).catch(() => {});
 
@@ -932,6 +1114,16 @@
   document.addEventListener('keydown', e => {
     if (e.key === 'Enter' && document.getElementById('loginPage').classList.contains('active')) doLogin();
   });
+
+  // ── RESTORE SESSION ON REFRESH ──
+  (function restoreSession() {
+    const saved = localStorage.getItem('so_session');
+    if (saved && accounts[saved]) {
+      currentUser = saved;
+      document.getElementById('welcomeUser').textContent = 'Hi, ' + saved + '!';
+      showPage('dashPage');
+    }
+  })();
 </script>
 </body>
 </html>
